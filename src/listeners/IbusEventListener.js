@@ -1,9 +1,11 @@
 var Log = require('log'),
-    log = new Log('debug'),
-    clc = require('cli-color');
+    log = new Log('info'),
+    clc = require('cli-color'),
+    tools = require('../tools.js'),
+    msgs = require('../messages.js');
 
 // Respond to Ibus Events
-var IbusEventClient = function() {
+    var IbusEventClient = function() {
 
     // self reference
     var _self = this;
@@ -12,6 +14,7 @@ var IbusEventClient = function() {
     this.init = init;
     this.deviceName = 'IbusEventClient';
     this.ibusInterface = {};
+    this.cdChangerDevice = {};
     this.remoteControlClient = {};
     this.remoteControlClients = [];
 
@@ -23,11 +26,14 @@ var IbusEventClient = function() {
     //var dataInfo = new Buffer([0xa5, 0x63, 0x01]);
 
     // implementation
-    function init(ibusInterface) {
+    function init(ibusInterface, cdcDevice) {
         _self.ibusInterface = ibusInterface;
+        _self.cdChangerDevice = cdcDevice;
 
         // events
         _self.ibusInterface.on('data', onData);
+
+
     }
 
     function setRemoteControlClient(key, remoteControlClient) {
@@ -42,7 +48,20 @@ var IbusEventClient = function() {
     }
 
     function onData(data) {
-        //log.debug('[IbusEventListener] ', data);
+       log.debug('[IbusEventListener] ', data);
+
+       if (parseInt(data.src, 16) == msgs.devices.radio) { //From radio
+            if (parseInt(data.dst, 16) == msgs.devices.cd_changer) { //To CD changer
+                if (tools.compareMsg(data, msgs.messages.rad_cdReqParams) || tools.compare(data, msgs.messages.rad_cdReqPlay)) {
+                   log.info("[Radio->CD Player] What you up to?");
+                         _self.cdChangerDevice.sendPlaying0101();
+                }
+                else if (tools.compareMsg(data, msgs.messages.rad_cdPool)) {
+                    log.info("[Radio->CD Player] Hey");
+                    _self.cdChangerDevice.respondAsCDplayer();
+                }
+            }
+       }
 
         var cmpData = compareify(data.src, data.dst, data.msg);
 
@@ -135,7 +154,7 @@ var IbusEventClient = function() {
 
         // TURN WHEEL RIGHT
         if (isEq(cmpData, compareify('f0', '3b', new Buffer([0x49, 0x81])))) {
-            // 49 8n - rotate right 1..9                
+            // 49 8n - rotate right 1..9
             repeat(_self.remoteControlClients['xbmc'].up, 1);
         }
         if (isEq(cmpData, compareify('f0', '3b', new Buffer([0x49, 0x82])))) {
