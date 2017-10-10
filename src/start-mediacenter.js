@@ -20,9 +20,12 @@ if (cluster.isMaster) {
     var IbusInterface = require('ibus').IbusInterface;
     var IbusDevices = require('ibus').IbusDevices;
 
+    var CDChangerDevice = require('./devices/CDChangerDevice.js')
     var MK4ToMk3CDTextDevice = require('./devices/MK4ToMk3CDTextDevice.js');
     var GraphicsNavigationOutputDevice = require('./devices/GraphicsNavigationOutputDevice.js');
     var IbusDebuggerDevice = require('./devices/IbusDebuggerDevice.js');
+
+    //var PibusHw4Handler = require('./adapters/PibusHw4Handler.js');
 
     var MpdClient = require('./clients/MpdClient.js');
     var XbmcClient = require('./clients/XbmcClient.js');
@@ -30,8 +33,9 @@ if (cluster.isMaster) {
     var IbusEventClient = require('./listeners/IbusEventListener.js');
 
     // config
+    //var device = '/dev/pts/2';
     //var device = '/dev/ttys003';
-    var device = '/dev/ttyAMA0';
+    var device = '/dev/serial0';
     //var device = '/dev/cu.usbserial-A601HPGR';
 
 
@@ -41,17 +45,14 @@ if (cluster.isMaster) {
     // Keyboard Client
     var keyboardEventListener = new KeyboardEventListener();
 
-    // Mpd Client
-    //var mpc = new MpdClient();
-
-    // Xbmc Client
-    var xbmcc = new XbmcClient();
-
     // Ibus Event Client
     var ibusEventClient = new IbusEventClient();
 
     // Ibus debugger
     var ibusDebuggerDevice = new IbusDebuggerDevice();
+
+    // CD Changer Device
+    var cdChangerDevice = new CDChangerDevice(ibusInterface);
 
     // Graphics Navidagtion Device pirate
     //var navOutput = new GraphicsNavigationOutputDevice(ibusInterface);
@@ -93,7 +94,7 @@ if (cluster.isMaster) {
         // is shutting down but still capturing the errors
         isShuttingDown = true;
 
-        // restart app    
+        // restart app
         setTimeout(function() {
             shutdown(function() {
                 log.info('[exception-handler] Shutdown success..');
@@ -109,17 +110,10 @@ if (cluster.isMaster) {
         // ibus debugger
         //ibusDebuggerDevice.init(ibusInterface, []);
 
-        // xbmc client startup
-        xbmcc.init();
-
-        // init keyboard listeren
-        //keyboardEventListener.init();
-        //keyboardEventListener.setRemoteControlClient('xbmc', xbmcc);
-        //keyboardEventListener.setRemoteControlClient('ibus', ibusDebuggerDevice);
+        cdChangerDevice.init(ibusInterface);
 
         // init ibus event client
-        ibusEventClient.init(ibusInterface);
-        ibusEventClient.setRemoteControlClient('xbmc', xbmcc);
+        ibusEventClient.init(ibusInterface, cdChangerDevice);
     }
 
     function shutdown(successFn) {

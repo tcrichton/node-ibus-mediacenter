@@ -8,6 +8,5 @@ var GPIO_RELAY_CTL = 27
 
 var gpioCtrl = new Gpio(22, 'out');
 
-
 // send wake signal HIGH to pin 22
 gpioCtrl.write(1);
